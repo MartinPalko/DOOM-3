@@ -207,6 +207,9 @@ build\Win32\$(Configuration)\TypeInfo.exe</Command>
 
 build\Win32\$(Configuration)\TypeInfo.exe</Command>
     </PreBuildEvent>
+    <ClCompile>
+      <PreprocessorDefinitions>"_XKEYCHECK_H";NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game\ai\AAS.cpp" />
