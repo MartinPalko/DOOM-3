@@ -993,24 +993,24 @@ void idRenderSystemLocal::GGCaptureRender()
 
 	qglReadPixels(rc->x, rc->y, rc->width, rc->height, GL_RGB, GL_UNSIGNED_BYTE, data);
 
-	std::vector<GameGlue::Color> pixels_vector(c);
+	byte* pixel_data = (byte*)R_StaticAlloc(c * 3);
 	
-	for (int i = 0; i < c; i++) {
-		pixels_vector[i] = GameGlue::Color(
-			data[i * 3],
-			data[i * 3 + 1],
-			data[i * 3 + 2],
-			0xff);
+	for (int i = 0; i < c; i++)
+	{
+		// swizzle so unity can use it directly
+		pixel_data[i * 3 + 0] = data[i * 3 + 2];
+		pixel_data[i * 3 + 1] = data[i * 3 + 0];
+		pixel_data[i * 3 + 2] = data[i * 3 + 1];
 	}
 	R_StaticFree(data);
 
 	flatbuffers::FlatBufferBuilder builder(1024);
-	auto pixels = builder.CreateVectorOfStructs(&pixels_vector[0], c);
+	auto pixels = builder.CreateVector(pixel_data, c * 3);
 
-	auto backbuffer = CreateTexture(builder, rc->width, rc->height, pixels);
+	auto backbuffer = GameGlue::CreateTexture(builder, rc->width, rc->height, pixels);
 
 	auto frameBuilder = GameGlue::HostRenderedFrameBuilder(builder);
-	//frameBuilder.add_backbuffer(backbuffer);
+	frameBuilder.add_backbuffer(backbuffer);
 	auto frame = frameBuilder.Finish();
 
 	GameGlue::ServerMessageBuilder messageBuilder(builder);
@@ -1020,6 +1020,9 @@ void idRenderSystemLocal::GGCaptureRender()
 
 	builder.Finish(message);
 	server.writeMessage(builder);
+
+	R_StaticFree(pixel_data);
+
 }
 // GAMEGLUE_END
 
