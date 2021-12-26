@@ -246,6 +246,10 @@ public:
 	// if the specified physical dimensions are larger than the current cropped region, they will be cut down to fit
 	virtual void			CropRenderSize( int width, int height, bool makePowerOfTwo = false, bool forceDimensions = false ) = 0;
 	virtual void			CaptureRenderToImage( const char *imageName ) = 0;
+	
+	// GAMEGLUE_START
+	virtual void GGCaptureRender() = 0;
+	// GAMEGLUE_END
 	// fixAlpha will set all the alpha channel values to 0xff, which allows screen captures
 	// to use the default tga loading code without having dimmed down areas in many places
 	virtual void			CaptureRenderToFile( const char *fileName, bool fixAlpha = false ) = 0;

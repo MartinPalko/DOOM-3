@@ -2503,6 +2503,10 @@ void idSessionLocal::UpdateScreen( bool outOfSequence ) {
 		renderSystem->EndFrame( NULL, NULL );
 	}
 
+	// GAMEGLUE_START
+	renderSystem->GGCaptureRender();
+	// GAMEGLUE_END
+
 	insideUpdateScreen = false;
 }
 

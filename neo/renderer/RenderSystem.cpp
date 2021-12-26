@@ -25,6 +25,9 @@ If you have questions concerning this license or the applicable additional terms
 
 ===========================================================================
 */
+// GAMEGLUE_START
+#include "GameGlueServer.h"
+// GAMEGLUE_END
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
@@ -942,6 +945,83 @@ void idRenderSystemLocal::CaptureRenderToImage( const char *imageName ) {
 
 	guiModel->Clear();
 }
+
+// GAMEGLUE_START
+void idRenderSystemLocal::GGCaptureRender()
+{
+	static GameGlue::GameGlueServer server = GameGlue::GameGlueServer();
+
+	server.waitForConnection();
+
+	static bool once = true;
+	if (once)
+	{
+		once = false;
+		{
+			flatbuffers::FlatBufferBuilder builder(1024);
+
+			auto messageText = builder.CreateString("MyStringFromDoom");
+			auto data = GameGlue::CreateStringTestMessage(builder, messageText);
+
+			GameGlue::ServerMessageBuilder messageBuilder(builder);
+			messageBuilder.add_data_type(GameGlue::ServerMessageData_StringTestMessage);
+			messageBuilder.add_data(data.o);
+			auto message = messageBuilder.Finish();
+
+			builder.Finish(message);
+			server.writeMessage(builder);
+		}
+	}
+
+	if (!server.isConnected())
+		return;
+
+	if (!glConfig.isInitialized)
+		return;
+
+	renderCrop_t* rc = &renderCrops[currentRenderCrop];
+
+	guiModel->EmitFullScreen();
+	guiModel->Clear();
+	R_IssueRenderCommands();
+
+	qglReadBuffer(GL_BACK);
+
+	// include extra space for OpenGL padding to word boundaries
+	int	c = (rc->width + 3) * rc->height;
+	byte* data = (byte*)R_StaticAlloc(c * 3);
+
+	qglReadPixels(rc->x, rc->y, rc->width, rc->height, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+	std::vector<GameGlue::Color> pixels_vector(c);
+	
+	for (int i = 0; i < c; i++) {
+		pixels_vector[i] = GameGlue::Color(
+			data[i * 3],
+			data[i * 3 + 1],
+			data[i * 3 + 2],
+			0xff);
+	}
+	R_StaticFree(data);
+
+	flatbuffers::FlatBufferBuilder builder(1024);
+	auto pixels = builder.CreateVectorOfStructs(&pixels_vector[0], c);
+
+	auto backbuffer = CreateTexture(builder, rc->width, rc->height, pixels);
+
+	auto frameBuilder = GameGlue::HostRenderedFrameBuilder(builder);
+	//frameBuilder.add_backbuffer(backbuffer);
+	auto frame = frameBuilder.Finish();
+
+	GameGlue::ServerMessageBuilder messageBuilder(builder);
+	messageBuilder.add_data_type(GameGlue::ServerMessageData_HostRenderedFrame);
+	messageBuilder.add_data(frame.o);
+	auto message = messageBuilder.Finish();
+
+	builder.Finish(message);
+	server.writeMessage(builder);
+}
+// GAMEGLUE_END
 
 /*
 ==============

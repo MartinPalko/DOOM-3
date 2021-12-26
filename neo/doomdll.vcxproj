@@ -165,94 +165,101 @@
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</IncludePath>
-    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>$(projectdir)..\..\GameGlue\3rdParty\flatbuffers\include;$(projectdir)..\..\GameGlue\GameGlueServer;C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include;$(WindowsSDK_IncludePath)$(VC_IncludePath)</IncludePath>
+    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath)</ExternalIncludePath>
+    <LibraryPath>$(projectdir)..\..\GameGlue\$(configuration);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">
-    <IncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</IncludePath>
-    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>$(projectdir)..\..\GameGlue\3rdParty\flatbuffers\include;$(projectdir)..\..\GameGlue\GameGlueServer;C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include;$(WindowsSDK_IncludePath)$(VC_IncludePath)</IncludePath>
+    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath)</ExternalIncludePath>
+    <LibraryPath>$(projectdir)..\..\GameGlue\$(configuration);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|Win32'">
-    <IncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</IncludePath>
-    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>$(projectdir)..\..\GameGlue\3rdParty\flatbuffers\include;$(projectdir)..\..\GameGlue\GameGlueServer;C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include;$(WindowsSDK_IncludePath)$(VC_IncludePath)</IncludePath>
+    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath)</ExternalIncludePath>
+    <LibraryPath>$(projectdir)..\..\GameGlue\$(configuration);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug|Win32'">
-    <IncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</IncludePath>
-    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>$(projectdir)..\..\GameGlue\3rdParty\flatbuffers\include;$(projectdir)..\..\GameGlue\GameGlueServer;C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include;$(WindowsSDK_IncludePath)$(VC_IncludePath)</IncludePath>
+    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath)</ExternalIncludePath>
+    <LibraryPath>$(projectdir)..\..\GameGlue\$(configuration);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with inlines|Win32'">
-    <IncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</IncludePath>
-    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>$(projectdir)..\..\GameGlue\3rdParty\flatbuffers\include;$(projectdir)..\..\GameGlue\GameGlueServer;C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include;$(WindowsSDK_IncludePath)$(VC_IncludePath)</IncludePath>
+    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath)</ExternalIncludePath>
+    <LibraryPath>$(projectdir)..\..\GameGlue\$(configuration);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|Win32'">
-    <IncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</IncludePath>
-    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>$(projectdir)..\..\GameGlue\3rdParty\flatbuffers\include;$(projectdir)..\..\GameGlue\GameGlueServer;C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include;$(WindowsSDK_IncludePath)$(VC_IncludePath)</IncludePath>
+    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath)</ExternalIncludePath>
+    <LibraryPath>$(projectdir)..\..\GameGlue\$(configuration);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</IncludePath>
-    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>$(projectdir)..\..\GameGlue\3rdParty\flatbuffers\include;$(projectdir)..\..\GameGlue\GameGlueServer;C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include;$(WindowsSDK_IncludePath)$(VC_IncludePath)</IncludePath>
+    <ExternalIncludePath>$(WindowsSDK_IncludePath)$(VC_IncludePath)</ExternalIncludePath>
+    <LibraryPath>$(projectdir)..\..\GameGlue\$(configuration);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|Win32'">
     <Link>
       <AdditionalLibraryDirectories>openal\lib;sys\win32\dongle;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>GameGlueServer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include";%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">
     <Link>
       <AdditionalLibraryDirectories>openal\lib;sys\win32\dongle;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>GameGlueServer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include";%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link>
       <AdditionalLibraryDirectories>openal\lib;sys\win32\dongle;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>GameGlueServer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include";%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with inlines|Win32'">
     <Link>
       <AdditionalLibraryDirectories>openal\lib;sys\win32\dongle;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>GameGlueServer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include";%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug|Win32'">
     <Link>
       <AdditionalLibraryDirectories>openal\lib;sys\win32\dongle;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>GameGlueServer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include";%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|Win32'">
     <Link>
       <AdditionalLibraryDirectories>openal\lib;sys\win32\dongle;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>GameGlueServer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include";%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Link>
       <AdditionalLibraryDirectories>openal\lib;sys\win32\dongle;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>GameGlueServer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.30.30705\include";%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
