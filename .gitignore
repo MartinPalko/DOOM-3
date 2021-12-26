@@ -1,3 +1,4 @@
 build
 base
 *.vs
+neo/game/gamesys/GameTypeInfo.h
