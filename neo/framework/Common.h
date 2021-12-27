@@ -90,6 +90,12 @@ extern HWND			com_hwndMsg;
 extern bool			com_outputMsg;
 #endif
 
+// GAMEGLUE_START
+namespace GameGlue {
+	class GameGlueServer;
+}
+// GAMEGLue_END
+
 struct MemInfo_t {
 	idStr			filebase;
 
@@ -208,6 +214,10 @@ public:
 
 								// Directly sample a keystate.
 	virtual int					KeyState( int key ) = 0;
+
+	// GAMEGLUE_START
+	virtual GameGlue::GameGlueServer* GetGameGlueServer() = 0;
+	// GAMEGLUE_END
 };
 
 extern idCommon *		common;

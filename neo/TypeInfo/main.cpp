@@ -88,6 +88,9 @@ public:
 	virtual const char *	BindingFromKey( const char *key ) { return NULL; }
 	virtual int				ButtonState( int key ) { return 0; }
 	virtual int				KeyState( int key ) { return 0; }
+	// GAMEGLUE_START
+	GameGlue::GameGlueServer* GetGameGlueServer() override { return nullptr; }
+	// GAMEGLue_END
 };
 
 idCVar com_developer( "developer", "0", CVAR_BOOL|CVAR_SYSTEM, "developer mode" );

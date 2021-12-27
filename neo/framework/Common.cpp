@@ -26,6 +26,10 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+// GAMEGLUE_START
+#include "GameGlueServer.h"
+// GAMEGLUE_END
+
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
@@ -158,6 +162,10 @@ public:
 
 	void						SetMachineSpec( void );
 
+	// GAMEGLUE_START
+	GameGlue::GameGlueServer* GetGameGlueServer() override { return m_gameGlueServer; }
+	// GAMEGLUE_END
+
 private:
 	void						InitCommands( void );
 	void						InitRenderSystem( void );
@@ -200,6 +208,10 @@ private:
 #ifdef ID_WRITE_VERSION
 	idCompressor *				config_compressor;
 #endif
+
+	// GAMEGLUE_START
+	GameGlue::GameGlueServer* m_gameGlueServer;
+	// GAMEGLUE_END
 };
 
 idCommonLocal	commonLocal;
@@ -2857,6 +2869,10 @@ void idCommonLocal::Init( int argc, const char **argv, const char *cmdline ) {
 		ClearCommandLine();
 
 		com_fullyInitialized = true;
+
+		// GAMEGLUE_START
+		m_gameGlueServer = new GameGlue::GameGlueServer();
+		// GAMEGLUE_END
 	}
 
 	catch( idException & ) {
@@ -2871,6 +2887,11 @@ idCommonLocal::Shutdown
 =================
 */
 void idCommonLocal::Shutdown( void ) {
+
+	// GAMEGLUE_START
+	delete m_gameGlueServer;
+	m_gameGlueServer = nullptr;
+	// GAMEGLUE_END
 
 	com_shuttingDown = true;
 

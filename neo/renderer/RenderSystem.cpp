@@ -949,31 +949,9 @@ void idRenderSystemLocal::CaptureRenderToImage( const char *imageName ) {
 // GAMEGLUE_START
 void idRenderSystemLocal::GGCaptureRender()
 {
-	static GameGlue::GameGlueServer server = GameGlue::GameGlueServer();
+	GameGlue::GameGlueServer* server = common->GetGameGlueServer();
 
-	server.waitForConnection();
-
-	static bool once = true;
-	if (once)
-	{
-		once = false;
-		{
-			flatbuffers::FlatBufferBuilder builder(1024);
-
-			auto messageText = builder.CreateString("MyStringFromDoom");
-			auto data = GameGlue::CreateStringTestMessage(builder, messageText);
-
-			GameGlue::ServerMessageBuilder messageBuilder(builder);
-			messageBuilder.add_data_type(GameGlue::ServerMessageData_StringTestMessage);
-			messageBuilder.add_data(data.o);
-			auto message = messageBuilder.Finish();
-
-			builder.Finish(message);
-			server.writeMessage(builder);
-		}
-	}
-
-	if (!server.isConnected())
+	if (!server->isConnected())
 		return;
 
 	if (!glConfig.isInitialized)
@@ -1007,7 +985,7 @@ void idRenderSystemLocal::GGCaptureRender()
 	auto message = messageBuilder.Finish();
 
 	builder.Finish(message);
-	server.writeMessage(builder);
+	server->writeMessage(builder);
 
 	R_StaticFree(data);
 
