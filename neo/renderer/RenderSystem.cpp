@@ -987,25 +987,13 @@ void idRenderSystemLocal::GGCaptureRender()
 
 	qglReadBuffer(GL_BACK);
 
-	// include extra space for OpenGL padding to word boundaries
-	int	c = (rc->width + 3) * rc->height;
+	int	c = (rc->width * rc->height);
 	byte* data = (byte*)R_StaticAlloc(c * 3);
 
 	qglReadPixels(rc->x, rc->y, rc->width, rc->height, GL_RGB, GL_UNSIGNED_BYTE, data);
 
-	byte* pixel_data = (byte*)R_StaticAlloc(c * 3);
-	
-	for (int i = 0; i < c; i++)
-	{
-		// swizzle so unity can use it directly
-		pixel_data[i * 3 + 0] = data[i * 3 + 2];
-		pixel_data[i * 3 + 1] = data[i * 3 + 0];
-		pixel_data[i * 3 + 2] = data[i * 3 + 1];
-	}
-	R_StaticFree(data);
-
 	flatbuffers::FlatBufferBuilder builder(1024);
-	auto pixels = builder.CreateVector(pixel_data, c * 3);
+	auto pixels = builder.CreateVector(data, c * 3);
 
 	auto backbuffer = GameGlue::CreateTexture(builder, rc->width, rc->height, pixels);
 
@@ -1021,7 +1009,7 @@ void idRenderSystemLocal::GGCaptureRender()
 	builder.Finish(message);
 	server.writeMessage(builder);
 
-	R_StaticFree(pixel_data);
+	R_StaticFree(data);
 
 }
 // GAMEGLUE_END
