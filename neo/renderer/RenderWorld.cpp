@@ -26,10 +26,29 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+// GAMEGLUE_START
+#include "GameGlueServer.h"
+// GAMEGLUE_END
+
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
 #include "tr_local.h"
+
+// GAMEGLUE_START
+GameGlue::Transform PackTransform(const idVec3& pos, const idMat3& _axis)
+{
+	idMat3 axis = _axis;// .Transpose();
+	// Translate doom's map units to meters as per https://doom.fandom.com/wiki/Map_unit
+	constexpr float posScale = 1.0f / 32.0f;
+	const auto position	= GameGlue::Vector3(pos.x * posScale, pos.z * posScale, pos.y * posScale);
+	const auto forward	= GameGlue::Vector3(axis[0].x, axis[0].z, axis[0].y);
+	const auto left		= GameGlue::Vector3(axis[1].x, axis[1].z, axis[1].y);
+	const auto up		= GameGlue::Vector3(axis[2].x, axis[2].z, axis[2].y);
+
+	return GameGlue::Transform(position, up, forward, left);
+}
+// GAMEGLUE_END
 
 /*
 ===================
@@ -187,6 +206,23 @@ qhandle_t idRenderWorldLocal::AddEntityDef( const renderEntity_t *re ){
 		}
 	}
 
+	// GAMEGLUE_START
+	{
+		flatbuffers::FlatBufferBuilder builder(16);
+
+		auto dataBuilder = GameGlue::EntityCreatedBuilder(builder);
+		dataBuilder.add_entity_handle(entityHandle);
+		const auto data = dataBuilder.Finish();
+
+		GameGlue::ServerMessageBuilder messageBuilder(builder);
+		messageBuilder.add_data_type(GameGlue::ServerMessageData_EntityCreated);
+		messageBuilder.add_data(data.o);
+		builder.Finish(messageBuilder.Finish());
+
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+	// GAMEGLUE_END
+
 	UpdateEntityDef( entityHandle, re );
 	
 	return entityHandle;
@@ -286,6 +322,28 @@ void idRenderWorldLocal::UpdateEntityDef( qhandle_t entityHandle, const renderEn
 	// based on the model bounds, add references in each area
 	// that may contain the updated surface
 	R_CreateEntityRefs( def );
+
+	// GAMEGLUE_START
+	{
+		flatbuffers::FlatBufferBuilder builder(16);
+		const renderEntity_t& params = def->parms;
+
+		const auto transform = PackTransform(params.origin, params.axis);
+
+		auto dataBuilder = GameGlue::EntityUpdatedBuilder(builder);
+		dataBuilder.add_entity_handle(entityHandle);
+		dataBuilder.add_transform(&transform);
+		dataBuilder.add_mesh_handle((int32_t)params.hModel);
+		const auto data = dataBuilder.Finish();
+
+		GameGlue::ServerMessageBuilder messageBuilder(builder);
+		messageBuilder.add_data_type(GameGlue::ServerMessageData_EntityUpdated);
+		messageBuilder.add_data(data.o);
+		builder.Finish(messageBuilder.Finish());
+
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+	// GAMEGLUE_END
 }
 
 /*
@@ -311,6 +369,23 @@ void idRenderWorldLocal::FreeEntityDef( qhandle_t entityHandle ) {
 	}
 
 	R_FreeEntityDefDerivedData( def, false, false );
+
+	// GAMEGLUE_START
+	{
+		flatbuffers::FlatBufferBuilder builder(16);
+
+		auto dataBuilder = GameGlue::EntityDestroyedBuilder(builder);
+		dataBuilder.add_entity_handle(entityHandle);
+		const auto data = dataBuilder.Finish();
+
+		GameGlue::ServerMessageBuilder messageBuilder(builder);
+		messageBuilder.add_data_type(GameGlue::ServerMessageData_EntityDestroyed);
+		messageBuilder.add_data(data.o);
+		builder.Finish(messageBuilder.Finish());
+
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+	// GAMEGLUE_END
 
 	if ( session->writeDemo && def->archived ) {
 		WriteFreeEntity( entityHandle );
@@ -747,6 +822,26 @@ void idRenderWorldLocal::RenderScene( const renderView_t *renderView ) {
 	tr.primaryWorld = this;
 	tr.primaryRenderView = *renderView;
 	tr.primaryView = parms;
+
+	// GAMEGLUE_START
+	{
+		flatbuffers::FlatBufferBuilder builder(32);
+
+		const auto transform = PackTransform(parms->renderView.vieworg, parms->renderView.viewaxis);
+
+		auto dataBuilder = GameGlue::CameraUpdatedBuilder(builder);
+		dataBuilder.add_transform(&transform);
+		dataBuilder.add_fov(parms->renderView.fov_y);
+		const auto data = dataBuilder.Finish();
+
+		GameGlue::ServerMessageBuilder messageBuilder(builder);
+		messageBuilder.add_data_type(GameGlue::ServerMessageData_CameraUpdated);
+		messageBuilder.add_data(data.o);
+		builder.Finish(messageBuilder.Finish());
+
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+	// GAMEGLUE_END
 
 	// rendering this view may cause other views to be rendered
 	// for mirrors / portals / shadows / environment maps
