@@ -2812,6 +2812,11 @@ void idCommonLocal::Init( int argc, const char **argv, const char *cmdline ) {
 		// print engine version
 		Printf( "%s\n", version.string );
 
+		// GAMEGLUE_START
+		m_gameGlueServer = new GameGlue::GameGlueServer();
+		m_gameGlueServer->waitForConnection(); // Don't want to miss important initialization messages (like mesh creation)
+		// GAMEGLUE_END
+
 		// initialize key input/binding, done early so bind command exists
 		idKeyInput::Init();
 
@@ -2869,10 +2874,6 @@ void idCommonLocal::Init( int argc, const char **argv, const char *cmdline ) {
 		ClearCommandLine();
 
 		com_fullyInitialized = true;
-
-		// GAMEGLUE_START
-		m_gameGlueServer = new GameGlue::GameGlueServer();
-		// GAMEGLUE_END
 	}
 
 	catch( idException & ) {
@@ -2887,11 +2888,6 @@ idCommonLocal::Shutdown
 =================
 */
 void idCommonLocal::Shutdown( void ) {
-
-	// GAMEGLUE_START
-	delete m_gameGlueServer;
-	m_gameGlueServer = nullptr;
-	// GAMEGLUE_END
 
 	com_shuttingDown = true;
 
@@ -2909,6 +2905,11 @@ void idCommonLocal::Shutdown( void ) {
 
 	// shut down the key system
 	idKeyInput::Shutdown();
+
+	// GAMEGLUE_START
+	delete m_gameGlueServer;
+	m_gameGlueServer = nullptr;
+	// GAMEGLUE_END
 
 	// shut down the cvar system
 	cvarSystem->Shutdown();
