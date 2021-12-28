@@ -621,6 +621,7 @@
     <ClInclude Include="ui\Winvar.h">
       <Filter>Ui</Filter>
     </ClInclude>
+    <ClInclude Include="GameGlueDoom3.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">

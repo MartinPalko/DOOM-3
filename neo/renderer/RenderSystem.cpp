@@ -26,7 +26,7 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 // GAMEGLUE_START
-#include "GameGlueServer.h"
+#include "../GameGlueDoom3.h"
 // GAMEGLUE_END
 #include "../idlib/precompiled.h"
 #pragma hdrstop

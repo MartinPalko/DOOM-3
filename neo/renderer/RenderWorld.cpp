@@ -27,28 +27,13 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 // GAMEGLUE_START
-#include "GameGlueServer.h"
+#include "../GameGlueDoom3.h"
 // GAMEGLUE_END
 
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
 #include "tr_local.h"
-
-// GAMEGLUE_START
-GameGlue::Transform PackTransform(const idVec3& pos, const idMat3& _axis)
-{
-	idMat3 axis = _axis;// .Transpose();
-	// Translate doom's map units to meters as per https://doom.fandom.com/wiki/Map_unit
-	constexpr float posScale = 1.0f / 32.0f;
-	const auto position	= GameGlue::Vector3(pos.x * posScale, pos.z * posScale, pos.y * posScale);
-	const auto forward	= GameGlue::Vector3(axis[0].x, axis[0].z, axis[0].y);
-	const auto left		= GameGlue::Vector3(axis[1].x, axis[1].z, axis[1].y);
-	const auto up		= GameGlue::Vector3(axis[2].x, axis[2].z, axis[2].y);
-
-	return GameGlue::Transform(position, up, forward, left);
-}
-// GAMEGLUE_END
 
 /*
 ===================

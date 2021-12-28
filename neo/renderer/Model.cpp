@@ -27,7 +27,7 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 // GAMEGLUE_START
-#include "GameGlueServer.h"
+#include "../GameGlueDoom3.h"
 // GAMEGLUE_END
 
 #include "../idlib/precompiled.h"
@@ -2240,9 +2240,6 @@ void idRenderModelStatic::WriteToDemoFile( class idDemoFile *f ) {
 // GAMEGLUE_START
 flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferBuilder& builder, const idRenderModelStatic* model)
 {
-	// Translate doom's map units to meters as per https://doom.fandom.com/wiki/Map_unit
-	constexpr float posScale = 1.0f / 32.0f;
-
 	int vertCount = 0;
 	int indexCount = 0;
 	// Count up all surface's verts so we know how big to make our arrays
@@ -2281,8 +2278,8 @@ flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferB
 		for (int v = 0; v < geo->numVerts; v++)
 		{
 			const idDrawVert& vert = geo->verts[v];
-			positions[iVert] = GameGlue::Vector3(-vert.xyz.y * posScale, vert.xyz.z * posScale, vert.xyz.x * posScale);
-			normals[iVert] = GameGlue::Vector3(-vert.normal.y, vert.normal.z, vert.normal.x);
+			positions[iVert] = PackPosition(vert.xyz);
+			normals[iVert] = PackDirection(vert.normal);
 			iVert++;
 		}
 
