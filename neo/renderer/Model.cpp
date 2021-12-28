@@ -26,6 +26,10 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+// GAMEGLUE_START
+#include "GameGlueServer.h"
+// GAMEGLUE_END
+
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
@@ -2232,6 +2236,143 @@ void idRenderModelStatic::WriteToDemoFile( class idDemoFile *f ) {
 		}
 	}
 }
+
+// GAMEGLUE_START
+flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferBuilder& builder, const idRenderModelStatic* model)
+{
+	// Translate doom's map units to meters as per https://doom.fandom.com/wiki/Map_unit
+	constexpr float posScale = 1.0f / 32.0f;
+
+	int vertCount = 0;
+	int indexCount = 0;
+	// Count up all surface's verts so we know how big to make our arrays
+	for (int s = 0; s < model->NumSurfaces(); s++)
+	{
+		const srfTriangles_t* geo = model->Surface(s)->geometry;
+
+		if (geo->verts == nullptr)
+			continue;
+
+		vertCount += geo->numVerts;
+		indexCount += geo->numIndexes;
+	}
+
+	//std::unique_ptr<int[]> my_array(new int[5]);
+	GameGlue::Vector3* positions = new GameGlue::Vector3[vertCount];
+	GameGlue::Vector3* normals = new GameGlue::Vector3[vertCount];
+	int* indexes = new int[indexCount];
+	GameGlue::SubMesh* subMeshes = new GameGlue::SubMesh[model->NumSurfaces()];
+
+	int iVert = 0;
+	int iIndex = 0;
+	int indexOffset = 0;
+	for (int s = 0; s < model->NumSurfaces(); s++)
+	{
+		const modelSurface_t* surface = model->Surface(s);
+		const srfTriangles_t* geo = surface->geometry;
+
+		if (geo->verts == nullptr)
+			continue;
+
+		subMeshes[s] = GameGlue::SubMesh(iIndex, geo->numIndexes);
+
+		indexOffset = iVert;
+
+		for (int v = 0; v < geo->numVerts; v++)
+		{
+			const idDrawVert& vert = geo->verts[v];
+			positions[iVert] = GameGlue::Vector3(-vert.xyz.y * posScale, vert.xyz.z * posScale, vert.xyz.x * posScale);
+			normals[iVert] = GameGlue::Vector3(-vert.normal.y, vert.normal.z, vert.normal.x);
+			iVert++;
+		}
+
+		for (int i = 0; i < geo->numIndexes; i++)
+		{
+			indexes[iIndex] = geo->indexes[i] + indexOffset;
+			iIndex++;
+		}
+	}
+
+	auto positionVector = builder.CreateVectorOfStructs(positions, vertCount);
+	auto normalsVector = builder.CreateVectorOfStructs(normals, vertCount);
+	auto indexesVector = builder.CreateVector(indexes, indexCount);
+	auto subMeshVector = builder.CreateVectorOfStructs(subMeshes, model->NumSurfaces());
+
+	auto meshDataBuilder = GameGlue::MeshDataBuilder(builder);
+	meshDataBuilder.add_positions(positionVector);
+	meshDataBuilder.add_normals(normalsVector);
+	meshDataBuilder.add_indicies(indexesVector);
+	meshDataBuilder.add_sub_meshes(subMeshVector);
+	
+	// Make sure to clean up
+	delete positions;
+	delete normals;
+	delete indexes;
+	delete subMeshes;
+
+	return meshDataBuilder.Finish();
+}
+
+void idRenderModelStatic::GameGlueSendModelCreated()
+{
+	flatbuffers::FlatBufferBuilder builder(2048);
+
+	auto name = builder.CreateString(Name());
+	auto meshData = PackageMeshData(builder, this);
+
+	auto dataBuilder = GameGlue::MeshCreatedBuilder(builder);
+	dataBuilder.add_mesh_handle((int)this);
+	dataBuilder.add_name(name);
+	dataBuilder.add_is_static(IsStaticWorldModel());
+	dataBuilder.add_mesh_data(meshData);
+	const auto data = dataBuilder.Finish();
+
+	GameGlue::ServerMessageBuilder messageBuilder(builder);
+	messageBuilder.add_data_type(GameGlue::ServerMessageData_MeshCreated);
+	messageBuilder.add_data(data.o);
+	builder.Finish(messageBuilder.Finish());
+
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+
+void idRenderModelStatic::GameGlueSendModelUpdate(const idRenderModel* impersonate)
+{
+	flatbuffers::FlatBufferBuilder builder(2048);
+
+	const idRenderModel* modelHandle = (impersonate != nullptr) ? impersonate : this;
+
+	auto name = builder.CreateString(Name());
+	auto meshData = PackageMeshData(builder, this);
+
+	auto dataBuilder = GameGlue::MeshUpdatedBuilder(builder);
+	dataBuilder.add_mesh_handle((int)modelHandle);
+	dataBuilder.add_mesh_data(meshData);
+	const auto data = dataBuilder.Finish();
+
+	GameGlue::ServerMessageBuilder messageBuilder(builder);
+	messageBuilder.add_data_type(GameGlue::ServerMessageData_MeshUpdated);
+	messageBuilder.add_data(data.o);
+	builder.Finish(messageBuilder.Finish());
+
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+
+void idRenderModelStatic::GameGlueSendModelDestroyed()
+{
+	flatbuffers::FlatBufferBuilder builder(16);
+
+	auto dataBuilder = GameGlue::MeshDestroyedBuilder(builder);
+	dataBuilder.add_mesh_handle((int)this);
+	const auto data = dataBuilder.Finish();
+
+	GameGlue::ServerMessageBuilder messageBuilder(builder);
+	messageBuilder.add_data_type(GameGlue::ServerMessageData_MeshDestroyed);
+	messageBuilder.add_data(data.o);
+	builder.Finish(messageBuilder.Finish());
+
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+// GAMEGLUE_END
 
 /*
 ================

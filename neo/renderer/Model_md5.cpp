@@ -806,6 +806,11 @@ idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 		staticModel->bounds.AddPoint( surf->geometry->bounds[0] );
 		staticModel->bounds.AddPoint( surf->geometry->bounds[1] );
 	}
+	
+	// GAMEGLUE_START
+	if (staticModel)
+		staticModel->GameGlueSendModelUpdate(ent->hModel);
+	// GAMEGLUE_END
 
 	return staticModel;
 }

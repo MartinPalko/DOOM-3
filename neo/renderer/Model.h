@@ -309,6 +309,12 @@ public:
 	// Writing to and reading from a demo file.
 	virtual void				ReadFromDemoFile( class idDemoFile *f ) = 0;
 	virtual void				WriteToDemoFile( class idDemoFile *f ) = 0;
+
+	// GAMEGLUE_START
+	virtual void GameGlueSendModelCreated() = 0;
+	virtual void GameGlueSendModelUpdate(const idRenderModel* impersonate = nullptr) = 0;
+	virtual void GameGlueSendModelDestroyed() = 0;
+	// GAMEGLUE_END
 };
 
 #endif /* !__MODEL_H__ */

@@ -412,6 +412,10 @@ idRenderModelManagerLocal::AddModel
 */
 void idRenderModelManagerLocal::AddModel( idRenderModel *model ) {
 	hash.Add( hash.GenerateKey( model->Name(), false ), models.Append( model ) );
+
+	// GAMEGLUE_START
+	model->GameGlueSendModelCreated();
+	// GAMEGLUE_END
 }
 
 /*
@@ -423,6 +427,10 @@ void idRenderModelManagerLocal::RemoveModel( idRenderModel *model ) {
 	int index = models.FindIndex( model );
 	hash.RemoveIndex( hash.GenerateKey( model->Name(), false ), index );
 	models.RemoveIndex( index );
+
+	// GAMEGLUE_START
+	model->GameGlueSendModelDestroyed();
+	// GAMEGLUE_END
 }
 
 /*

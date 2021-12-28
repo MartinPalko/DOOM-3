@@ -85,6 +85,12 @@ public:
 	virtual void				WriteToDemoFile( class idDemoFile *f );
 	virtual float				DepthHack() const;
 
+	// GAMEGLUE_START
+	virtual void GameGlueSendModelCreated();
+	virtual void GameGlueSendModelUpdate(const idRenderModel* impersonate = nullptr);
+	virtual void GameGlueSendModelDestroyed();
+	// GAMEGLUE_END`
+
 	void						MakeDefaultModel();
 	
 	bool						LoadASE( const char *fileName );
