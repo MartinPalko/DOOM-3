@@ -425,6 +425,24 @@ qhandle_t idRenderWorldLocal::AddLightDef( const renderLight_t *rlight ) {
 			ResizeInteractionTable();
 		}
 	}
+
+	// GAMEGLUE_START
+	{
+		flatbuffers::FlatBufferBuilder builder(16);
+
+		auto dataBuilder = GameGlue::LightCreatedBuilder(builder);
+		dataBuilder.add_light_handle(lightHandle);
+		const auto data = dataBuilder.Finish();
+
+		GameGlue::ServerMessageBuilder messageBuilder(builder);
+		messageBuilder.add_data_type(GameGlue::ServerMessageData_LightCreated);
+		messageBuilder.add_data(data.o);
+		builder.Finish(messageBuilder.Finish());
+
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+	// GAMEGLUE_END
+
 	UpdateLightDef( lightHandle, rlight );
 
 	return lightHandle;
@@ -498,6 +516,61 @@ void idRenderWorldLocal::UpdateLightDef( qhandle_t lightHandle, const renderLigh
 		R_CreateLightRefs( light );
 		R_CreateLightDefFogPortals( light );
 	}
+
+	// GAMEGLUE_START
+	{
+		flatbuffers::FlatBufferBuilder builder(16);
+		const renderLight_t& params = light->parms;
+
+		if (params.parallel || !params.pointLight)
+		{
+			return; // Not easily supported :(
+		}
+
+		GameGlue::LightType type;
+		float radius = params.lightRadius.Length() * g_doomToUnityWorldScale;
+		idVec3 origin = params.origin + params.lightCenter;
+		idMat3 axis = params.axis;
+
+		if (params.parallel)
+		{
+			type = GameGlue::LightType::LightType_Directional;
+		}
+		else if (params.pointLight)
+		{
+			type = GameGlue::LightType::LightType_Point;
+		}
+		else
+		{
+			type = GameGlue::LightType::LightType_Spot;
+			radius = params.end.Length();
+			//axis
+		}
+
+		const auto transform = PackTransform(origin, axis);
+
+		GameGlue::Vector3 lightColor = GameGlue::Vector3(
+			params.shaderParms[0],
+			params.shaderParms[1],
+			params.shaderParms[2]);
+
+		auto dataBuilder = GameGlue::LightUpdatedBuilder(builder);
+		dataBuilder.add_light_handle(lightHandle);
+		dataBuilder.add_transform(&transform);
+		dataBuilder.add_color(&lightColor);
+		dataBuilder.add_radius(radius);
+		dataBuilder.add_type(type);
+		dataBuilder.add_cast_shadows(!params.noShadows);
+		const auto data = dataBuilder.Finish();
+
+		GameGlue::ServerMessageBuilder messageBuilder(builder);
+		messageBuilder.add_data_type(GameGlue::ServerMessageData_LightUpdated);
+		messageBuilder.add_data(data.o);
+		builder.Finish(messageBuilder.Finish());
+
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+	// GAMEGLUE_END
 }
 
 /*
@@ -523,6 +596,23 @@ void idRenderWorldLocal::FreeLightDef( qhandle_t lightHandle ) {
 	}
 
 	R_FreeLightDefDerivedData( light );
+
+	// GAMEGLUE_START
+	{
+		flatbuffers::FlatBufferBuilder builder(16);
+
+		auto dataBuilder = GameGlue::LightDestroyedBuilder(builder);
+		dataBuilder.add_light_handle(lightHandle);
+		const auto data = dataBuilder.Finish();
+
+		GameGlue::ServerMessageBuilder messageBuilder(builder);
+		messageBuilder.add_data_type(GameGlue::ServerMessageData_LightDestroyed);
+		messageBuilder.add_data(data.o);
+		builder.Finish(messageBuilder.Finish());
+
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+	// GAMEGLUE_END
 
 	if ( session->writeDemo && light->archived ) {
 		WriteFreeLight( lightHandle );

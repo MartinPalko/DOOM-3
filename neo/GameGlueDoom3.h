@@ -15,7 +15,6 @@
 // Doom X is forward
 // Unity Z is forward
 
-
 const idVec3 g_unityRight = idVec3(1, 0, 0);
 const idVec3 g_unityUp = idVec3(0, 1, 0);
 const idVec3 g_unityForward = idVec3(0, 0, 1);
@@ -25,6 +24,10 @@ const idVec3 g_doomForward = idVec3(1, 0, 0);
 const idVec3 g_doomUp = idVec3(0, 0, 1);
 
 const idMat3 g_doomToUnity = idMat3(g_doomRight, g_doomUp, g_doomForward).Transpose() * idMat3(g_unityRight, g_unityUp, g_unityForward);
+
+// Translate doom's map units to meters as per https://doom.fandom.com/wiki/Map_unit
+constexpr float g_doomToUnityWorldScale = 1.0f / 32.0f;
+
 
 inline GameGlue::Vector3 ToGameGlue(const idVec3& v)
 {
@@ -38,10 +41,7 @@ static GameGlue::Vector3 PackDirection(const idVec3& dir)
 
 static GameGlue::Vector3 PackPosition(const idVec3& pos)
 {
-	// Translate doom's map units to meters as per https://doom.fandom.com/wiki/Map_unit
-	constexpr float posScale = 1.0f / 32.0f;
-
-	return ToGameGlue(pos * g_doomToUnity * posScale);
+	return ToGameGlue(pos * g_doomToUnity * g_doomToUnityWorldScale);
 }
 
 static GameGlue::Transform PackTransform(const idVec3& pos, const idMat3& axis)
