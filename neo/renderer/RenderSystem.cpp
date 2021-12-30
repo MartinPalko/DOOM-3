@@ -973,16 +973,8 @@ void idRenderSystemLocal::GGCaptureRender()
 	flatbuffers::FlatBufferBuilder builder(1024);
 	auto pixels = builder.CreateVector(data, c * 3);
 
-	auto backbuffer = GameGlue::CreateTexture(builder, rc->width, rc->height, pixels);
-
-	auto frameBuilder = GameGlue::HostRenderedFrameBuilder(builder);
-	frameBuilder.add_backbuffer(backbuffer);
-	auto frame = frameBuilder.Finish();
-
-	GameGlue::ServerMessageBuilder messageBuilder(builder);
-	messageBuilder.add_data_type(GameGlue::ServerMessageData_HostRenderedFrame);
-	messageBuilder.add_data(frame.o);
-	auto message = messageBuilder.Finish();
+	auto frame = GameGlue::CreateHostRenderedFrame(builder, rc->width, rc->height, GameGlue::TextureFormat_R8G8B8, pixels);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_HostRenderedFrame, frame.o);
 
 	builder.Finish(message);
 	server->writeMessage(builder);

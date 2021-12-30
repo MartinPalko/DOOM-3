@@ -26,10 +26,56 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+// GAMEGLUE_START
+#include "../GameGlueDoom3.h"
+// GAMEGLUE_END
+
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
 #include "tr_local.h"
+
+// GAMEGLUE_START
+static GameGlue::TextureFormat GetGameGlueFormat(int internalFormat)
+{
+	switch (internalFormat)
+	{
+	case GL_RGBA8:
+		return GameGlue::TextureFormat_R8G8B8A8;
+	case GL_RGB8:
+		return GameGlue::TextureFormat_R8G8B8;
+	case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
+		return GameGlue::TextureFormat_DXT1;
+	//case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
+	//	return GameGlue::TextureFormat_DXT3;
+	case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
+		return GameGlue::TextureFormat_DXT5;
+	default:
+		return GameGlue::TextureFormat(GameGlue::TextureFormat_MAX + 1); // Unknown
+	}
+	
+}
+
+static void SendTextureUpdated(int handle, idStr name, int textureWidth, int textureHeight, GameGlue::TextureFormat format)
+{
+	flatbuffers::FlatBufferBuilder builder(128);
+
+	auto data = GameGlue::CreateTextureUpdatedDirect(builder, handle, name.c_str(), textureWidth, textureHeight, format);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_TextureUpdated, data.o);
+	builder.Finish(message);
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+
+static void SendTextureMipUpdated(int handle, byte* bytes, int byteSize, int mipWidth, int mipHeight, int mipLevel)
+{
+	flatbuffers::FlatBufferBuilder builder(byteSize + 128);
+	auto pixels = builder.CreateVector(bytes, byteSize);
+	auto data = GameGlue::CreateTextureMipUpdated(builder, handle, mipLevel, mipWidth, mipHeight, pixels);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_TextureMipUpdated, data.o);
+	builder.Finish(message);
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+// GAMEGLUE_END
 
 /*
 PROBLEM: compressed textures may break the zero clamp rule!
@@ -674,6 +720,11 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 		qglTexImage2D( GL_TEXTURE_2D, 0, internalFormat, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBuffer );
 	}
 
+	// GAMEGLUE_START
+	SendTextureUpdated((int)this, imgName, scaled_width, scaled_height, GameGlue::TextureFormat_R8G8B8A8);
+	SendTextureMipUpdated((int)this, scaledBuffer, scaled_width* scaled_height * 4, scaled_width, scaled_height, 0);
+	// GAMEGLUE_END
+
 	// create and upload the mip map levels, which we do in all cases, even if we don't think they are needed
 	int		miplevel;
 
@@ -709,6 +760,10 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 			qglTexImage2D( GL_TEXTURE_2D, miplevel, internalFormat, scaled_width, scaled_height, 
 				0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBuffer );
 		}
+
+		// GAMEGLUE_START
+		SendTextureMipUpdated((int)this, scaledBuffer, scaled_width * scaled_height * 4, scaled_width, scaled_height, miplevel);
+		// GAMEGLUE_END
 	}
 
 	if ( scaledBuffer != 0 ) {
@@ -1551,6 +1606,20 @@ void idImage::UploadPrecompressedImage( byte *data, int len ) {
 			}
 		}
 
+		// GAMEGLUE_START
+		{
+			// NOTE: We ignore skip mips
+			const GameGlue::TextureFormat ggFormat = GetGameGlueFormat(internalFormat);
+			if (ggFormat <= GameGlue::TextureFormat_MAX)
+			{
+				if (i == 0)
+					SendTextureUpdated((int)this, this->imgName, uw, uh, ggFormat);
+
+				SendTextureMipUpdated((int)this, imagedata, size, uw, uh, i);
+			}
+		}
+		// GAMEGLUE_END
+
 		imagedata += size;
 		uw /= 2;
 		uh /= 2;
@@ -1576,6 +1645,23 @@ On exit, the idImage will have a valid OpenGL texture number that can be bound
 void	idImage::ActuallyLoadImage( bool checkForPrecompressed, bool fromBackEnd ) {
 	int		width, height;
 	byte	*pic;
+
+	// GAMEGLUE_START
+	{
+		flatbuffers::FlatBufferBuilder builder(16);
+
+		auto dataBuilder = GameGlue::TextureCreatedBuilder(builder);
+		dataBuilder.add_texture_handle((int)this);
+		const auto data = dataBuilder.Finish();
+
+		GameGlue::ServerMessageBuilder messageBuilder(builder);
+		messageBuilder.add_data_type(GameGlue::ServerMessageData_TextureCreated);
+		messageBuilder.add_data(data.o);
+		builder.Finish(messageBuilder.Finish());
+
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+	// GAMEGLUE_END
 
 	// this is the ONLY place generatorFunction will ever be called
 	if ( generatorFunction ) {
@@ -1677,6 +1763,24 @@ void idImage::PurgeImage() {
 			qglDeleteTextures( 1, &texnum );	// this should be the ONLY place it is ever called!
 		}
 		texnum = TEXTURE_NOT_LOADED;
+
+		// GAMEGLUE_START
+		{
+			flatbuffers::FlatBufferBuilder builder(16);
+
+			auto dataBuilder = GameGlue::TextureDestroyedBuilder(builder);
+			//dataBuilder.add_texture_handle(imageHash); // TODO
+			dataBuilder.add_texture_handle((int)this);
+			const auto data = dataBuilder.Finish();
+
+			GameGlue::ServerMessageBuilder messageBuilder(builder);
+			messageBuilder.add_data_type(GameGlue::ServerMessageData_TextureDestroyed);
+			messageBuilder.add_data(data.o);
+			builder.Finish(messageBuilder.Finish());
+
+			common->GetGameGlueServer()->writeMessage(builder);
+		}
+		// GAMEGLUE_END
 	}
 
 	// clear all the current binding caches, so the next bind will do a real one
