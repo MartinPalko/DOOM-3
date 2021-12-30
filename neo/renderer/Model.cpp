@@ -2241,7 +2241,6 @@ void idRenderModelStatic::WriteToDemoFile( class idDemoFile *f ) {
 flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferBuilder& builder, const idRenderModelStatic* model)
 {
 	int vertCount = 0;
-	int indexCount = 0;
 	// Count up all surface's verts so we know how big to make our arrays
 	for (int s = 0; s < model->NumSurfaces(); s++)
 	{
@@ -2251,17 +2250,19 @@ flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferB
 			continue;
 
 		vertCount += geo->numVerts;
-		indexCount += geo->numIndexes;
 	}
 
-	//std::unique_ptr<int[]> my_array(new int[5]);
-	GameGlue::Vector3* positions = new GameGlue::Vector3[vertCount];
-	GameGlue::Vector3* normals = new GameGlue::Vector3[vertCount];
-	int* indexes = new int[indexCount];
-	GameGlue::SubMesh* subMeshes = new GameGlue::SubMesh[model->NumSurfaces()];
+	if (vertCount == 0)
+	{
+		// Empty mesh
+		return GameGlue::CreateMeshDataDirect(builder);
+	}
+
+	std::vector<GameGlue::Vector3> positions(vertCount);
+	std::vector <GameGlue::Vector3> normals(vertCount);
+	std::vector<flatbuffers::Offset<GameGlue::SubMesh>> subMeshes(model->NumSurfaces());
 
 	int iVert = 0;
-	int iIndex = 0;
 	int indexOffset = 0;
 	for (int s = 0; s < model->NumSurfaces(); s++)
 	{
@@ -2270,8 +2271,6 @@ flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferB
 
 		if (geo->verts == nullptr)
 			continue;
-
-		subMeshes[s] = GameGlue::SubMesh(iIndex, geo->numIndexes);
 
 		indexOffset = iVert;
 
@@ -2283,51 +2282,35 @@ flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferB
 			iVert++;
 		}
 
+		std::vector<int> indexes(geo->numIndexes);
 		for (int i = 0; i < geo->numIndexes; i++)
 		{
-			indexes[iIndex] = geo->indexes[i] + indexOffset;
-			iIndex++;
+			indexes[i] = geo->indexes[i] + indexOffset;
 		}
+
+		subMeshes[s] = GameGlue::CreateSubMeshDirect(builder, &indexes);
+
 	}
 
-	auto positionVector = builder.CreateVectorOfStructs(positions, vertCount);
-	auto normalsVector = builder.CreateVectorOfStructs(normals, vertCount);
-	auto indexesVector = builder.CreateVector(indexes, indexCount);
-	auto subMeshVector = builder.CreateVectorOfStructs(subMeshes, model->NumSurfaces());
-
-	auto meshDataBuilder = GameGlue::MeshDataBuilder(builder);
-	meshDataBuilder.add_positions(positionVector);
-	meshDataBuilder.add_normals(normalsVector);
-	meshDataBuilder.add_indicies(indexesVector);
-	meshDataBuilder.add_sub_meshes(subMeshVector);
-	
-	// Make sure to clean up
-	delete positions;
-	delete normals;
-	delete indexes;
-	delete subMeshes;
-
-	return meshDataBuilder.Finish();
+	return GameGlue::CreateMeshDataDirect(builder,
+		&positions,
+		0,
+		&normals,
+		0,
+		0,
+		0,
+		&subMeshes);
 }
 
 void idRenderModelStatic::GameGlueSendModelCreated()
 {
 	flatbuffers::FlatBufferBuilder builder(2048);
 
-	auto name = builder.CreateString(Name());
 	auto meshData = PackageMeshData(builder, this);
 
-	auto dataBuilder = GameGlue::MeshCreatedBuilder(builder);
-	dataBuilder.add_mesh_handle((int)this);
-	dataBuilder.add_name(name);
-	dataBuilder.add_is_static(IsStaticWorldModel());
-	dataBuilder.add_mesh_data(meshData);
-	const auto data = dataBuilder.Finish();
-
-	GameGlue::ServerMessageBuilder messageBuilder(builder);
-	messageBuilder.add_data_type(GameGlue::ServerMessageData_MeshCreated);
-	messageBuilder.add_data(data.o);
-	builder.Finish(messageBuilder.Finish());
+	auto data = GameGlue::CreateMeshCreatedDirect(builder, (int)this, Name(), IsStaticWorldModel(), meshData);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MeshCreated, data.o);
+	builder.Finish(message);
 
 	common->GetGameGlueServer()->writeMessage(builder);
 }
@@ -2338,18 +2321,11 @@ void idRenderModelStatic::GameGlueSendModelUpdate(const idRenderModel* impersona
 
 	const idRenderModel* modelHandle = (impersonate != nullptr) ? impersonate : this;
 
-	auto name = builder.CreateString(Name());
 	auto meshData = PackageMeshData(builder, this);
 
-	auto dataBuilder = GameGlue::MeshUpdatedBuilder(builder);
-	dataBuilder.add_mesh_handle((int)modelHandle);
-	dataBuilder.add_mesh_data(meshData);
-	const auto data = dataBuilder.Finish();
-
-	GameGlue::ServerMessageBuilder messageBuilder(builder);
-	messageBuilder.add_data_type(GameGlue::ServerMessageData_MeshUpdated);
-	messageBuilder.add_data(data.o);
-	builder.Finish(messageBuilder.Finish());
+	auto data = GameGlue::CreateMeshUpdated(builder, (int)modelHandle, meshData);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MeshUpdated, data.o);
+	builder.Finish(message);
 
 	common->GetGameGlueServer()->writeMessage(builder);
 }
