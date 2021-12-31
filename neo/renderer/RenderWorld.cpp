@@ -192,20 +192,7 @@ qhandle_t idRenderWorldLocal::AddEntityDef( const renderEntity_t *re ){
 	}
 
 	// GAMEGLUE_START
-	{
-		flatbuffers::FlatBufferBuilder builder(16);
-
-		auto dataBuilder = GameGlue::EntityCreatedBuilder(builder);
-		dataBuilder.add_entity_handle(entityHandle);
-		const auto data = dataBuilder.Finish();
-
-		GameGlue::ServerMessageBuilder messageBuilder(builder);
-		messageBuilder.add_data_type(GameGlue::ServerMessageData_EntityCreated);
-		messageBuilder.add_data(data.o);
-		builder.Finish(messageBuilder.Finish());
-
-		common->GetGameGlueServer()->writeMessage(builder);
-	}
+	SendEntityCreated(entityHandle);
 	// GAMEGLUE_END
 
 	UpdateEntityDef( entityHandle, re );
@@ -309,25 +296,7 @@ void idRenderWorldLocal::UpdateEntityDef( qhandle_t entityHandle, const renderEn
 	R_CreateEntityRefs( def );
 
 	// GAMEGLUE_START
-	{
-		flatbuffers::FlatBufferBuilder builder(16);
-		const renderEntity_t& params = def->parms;
-
-		const auto transform = PackTransform(params.origin, params.axis);
-
-		auto dataBuilder = GameGlue::EntityUpdatedBuilder(builder);
-		dataBuilder.add_entity_handle(entityHandle);
-		dataBuilder.add_transform(&transform);
-		dataBuilder.add_mesh_handle((int32_t)params.hModel);
-		const auto data = dataBuilder.Finish();
-
-		GameGlue::ServerMessageBuilder messageBuilder(builder);
-		messageBuilder.add_data_type(GameGlue::ServerMessageData_EntityUpdated);
-		messageBuilder.add_data(data.o);
-		builder.Finish(messageBuilder.Finish());
-
-		common->GetGameGlueServer()->writeMessage(builder);
-	}
+	SendEntityUpdated(entityHandle, def->parms.origin, def->parms.axis, def->parms.hModel);
 	// GAMEGLUE_END
 }
 
@@ -356,20 +325,7 @@ void idRenderWorldLocal::FreeEntityDef( qhandle_t entityHandle ) {
 	R_FreeEntityDefDerivedData( def, false, false );
 
 	// GAMEGLUE_START
-	{
-		flatbuffers::FlatBufferBuilder builder(16);
-
-		auto dataBuilder = GameGlue::EntityDestroyedBuilder(builder);
-		dataBuilder.add_entity_handle(entityHandle);
-		const auto data = dataBuilder.Finish();
-
-		GameGlue::ServerMessageBuilder messageBuilder(builder);
-		messageBuilder.add_data_type(GameGlue::ServerMessageData_EntityDestroyed);
-		messageBuilder.add_data(data.o);
-		builder.Finish(messageBuilder.Finish());
-
-		common->GetGameGlueServer()->writeMessage(builder);
-	}
+	SendEntityDestroyed(entityHandle);
 	// GAMEGLUE_END
 
 	if ( session->writeDemo && def->archived ) {

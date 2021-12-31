@@ -45,9 +45,10 @@ static GameGlue::TextureFormat GetGameGlueFormat(int internalFormat)
 	case GL_RGB8:
 		return GameGlue::TextureFormat_R8G8B8;
 	case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
+	case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
 		return GameGlue::TextureFormat_DXT1;
-	//case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
-	//	return GameGlue::TextureFormat_DXT3;
+	case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
+		return GameGlue::TextureFormat_DXT3;
 	case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
 		return GameGlue::TextureFormat_DXT5;
 	default:
@@ -1612,8 +1613,8 @@ void idImage::UploadPrecompressedImage( byte *data, int len ) {
 			const GameGlue::TextureFormat ggFormat = GetGameGlueFormat(internalFormat);
 			if (ggFormat <= GameGlue::TextureFormat_MAX)
 			{
-				if (i == 0)
-					SendTextureUpdated((int)this, this->imgName, uw, uh, ggFormat);
+				//if (i == 0)
+				SendTextureUpdated((int)this, this->imgName, uw, uh, ggFormat);
 
 				SendTextureMipUpdated((int)this, imagedata, size, uw, uh, i);
 			}

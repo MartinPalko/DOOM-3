@@ -28,6 +28,10 @@ const idMat3 g_doomToUnity = idMat3(g_doomRight, g_doomUp, g_doomForward).Transp
 // Translate doom's map units to meters as per https://doom.fandom.com/wiki/Map_unit
 constexpr float g_doomToUnityWorldScale = 1.0f / 32.0f;
 
+inline GameGlue::Vector2 ToGameGlue(const idVec2& v)
+{
+	return GameGlue::Vector2(v.x, v.y);
+}
 
 inline GameGlue::Vector3 ToGameGlue(const idVec3& v)
 {
@@ -52,6 +56,60 @@ static GameGlue::Transform PackTransform(const idVec3& pos, const idMat3& axis)
 	const auto forward = ToGameGlue((g_doomForward * axis) * g_doomToUnity);
 
 	return GameGlue::Transform(position, forward, up, right);
+}
+
+static void SendEntityCreated(int entityHandle)
+{
+	flatbuffers::FlatBufferBuilder builder(16);
+
+	auto dataBuilder = GameGlue::EntityCreatedBuilder(builder);
+	dataBuilder.add_entity_handle(entityHandle);
+	const auto data = dataBuilder.Finish();
+
+	GameGlue::ServerMessageBuilder messageBuilder(builder);
+	messageBuilder.add_data_type(GameGlue::ServerMessageData_EntityCreated);
+	messageBuilder.add_data(data.o);
+	builder.Finish(messageBuilder.Finish());
+
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+
+static void SendEntityUpdated(int entityHandle, const idVec3& origin, const idMat3& axis, const idRenderModel* model)
+{
+	flatbuffers::FlatBufferBuilder builder(16);
+
+	const auto transform = PackTransform(origin, axis);
+
+	std::vector<int> materialHandles(model->NumSurfaces());
+	for (int i = 0; i < model->NumSurfaces(); i++)
+	{
+		materialHandles[i] = (int)model->Surface(i)->shader;
+	}
+
+	const auto data = GameGlue::CreateEntityUpdatedDirect(builder, entityHandle, &transform, (int32_t)model, &materialHandles);
+
+	GameGlue::ServerMessageBuilder messageBuilder(builder);
+	messageBuilder.add_data_type(GameGlue::ServerMessageData_EntityUpdated);
+	messageBuilder.add_data(data.o);
+	builder.Finish(messageBuilder.Finish());
+
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+
+static void SendEntityDestroyed(int entityHandle)
+{
+	flatbuffers::FlatBufferBuilder builder(16);
+
+	auto dataBuilder = GameGlue::EntityDestroyedBuilder(builder);
+	dataBuilder.add_entity_handle(entityHandle);
+	const auto data = dataBuilder.Finish();
+
+	GameGlue::ServerMessageBuilder messageBuilder(builder);
+	messageBuilder.add_data_type(GameGlue::ServerMessageData_EntityDestroyed);
+	messageBuilder.add_data(data.o);
+	builder.Finish(messageBuilder.Finish());
+
+	common->GetGameGlueServer()->writeMessage(builder);
 }
 
 // GAMEGLUE_END
