@@ -2259,7 +2259,11 @@ flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferB
 	}
 
 	std::vector<GameGlue::Vector3> positions(vertCount);
+	std::vector<GameGlue::Vector2> uvs(vertCount);
 	std::vector <GameGlue::Vector3> normals(vertCount);
+	std::vector <GameGlue::Vector3> tangents(vertCount);
+	std::vector <GameGlue::Vector3> bitangents(vertCount);
+	std::vector <GameGlue::Vector4> colors(vertCount);
 	std::vector<flatbuffers::Offset<GameGlue::SubMesh>> subMeshes(model->NumSurfaces());
 
 	int iVert = 0;
@@ -2278,7 +2282,11 @@ flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferB
 		{
 			const idDrawVert& vert = geo->verts[v];
 			positions[iVert] = PackPosition(vert.xyz);
+			uvs[iVert] = ToGameGlue(vert.st);
 			normals[iVert] = PackDirection(vert.normal);
+			tangents[iVert] = PackDirection(vert.tangents[0]);
+			bitangents[iVert] = PackDirection(vert.tangents[1]);
+			colors[iVert] = GameGlue::Vector4((float)vert.color[0] / 255.0f, (float)vert.color[1] / 255.0f, (float)vert.color[2] / 255.0f, (float)vert.color[3] / 255.0f);
 			iVert++;
 		}
 
@@ -2294,25 +2302,91 @@ flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferB
 
 	return GameGlue::CreateMeshDataDirect(builder,
 		&positions,
-		0,
+		&uvs,
 		&normals,
-		0,
-		0,
-		0,
+		&tangents,
+		&bitangents,
+		&colors,
 		&subMeshes);
 }
 
 void idRenderModelStatic::GameGlueSendModelCreated()
 {
-	flatbuffers::FlatBufferBuilder builder(2048);
+	// Model
+	{
+		flatbuffers::FlatBufferBuilder builder(2048);
 
-	auto meshData = PackageMeshData(builder, this);
+		auto meshData = PackageMeshData(builder, this);
 
-	auto data = GameGlue::CreateMeshCreatedDirect(builder, (int)this, Name(), IsStaticWorldModel(), meshData);
-	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MeshCreated, data.o);
-	builder.Finish(message);
+		auto data = GameGlue::CreateMeshCreatedDirect(builder, (int)this, Name(), IsStaticWorldModel(), meshData);
+		auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MeshCreated, data.o);
+		builder.Finish(message);
 
-	common->GetGameGlueServer()->writeMessage(builder);
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+	// Materials
+	for (int i = 0; i < NumSurfaces(); i++)
+	{
+		const modelSurface_t* surface = Surface(i);
+		const idMaterial* m = surface->shader;
+
+		flatbuffers::FlatBufferBuilder builder(2048);
+
+		std::vector<flatbuffers::Offset<GameGlue::MaterialParameter>> params;
+		
+
+		for (int s = 0; s < m->GetNumStages(); s++)
+		{
+			const auto stage = m->GetStage(s);
+
+			const char* paramName = nullptr;
+			
+			if (stage->lighting == SL_AMBIENT)
+			{
+				paramName = "_Emissive";
+			}
+			else if (stage->lighting == SL_BUMP)
+			{
+				paramName = "_NormalMap";
+			}
+			else if (stage->lighting == SL_DIFFUSE)
+			{
+				paramName = "_MainTex";
+			}
+			else if (stage->lighting == SL_SPECULAR)
+			{
+				paramName = "_Specular";
+			}
+			else
+			{
+				continue;
+			}
+
+			int textureHandle = (int)stage->texture.image;
+			auto paramData = builder.CreateStruct(GameGlue::TextureParameter(textureHandle));
+
+			params.push_back(GameGlue::CreateMaterialParameterDirect(builder, paramName, GameGlue::MaterialParameterData_TextureParameter, paramData.o));
+		}
+
+		auto material = GameGlue::CreateMaterialDirect(builder, &params);
+
+		std::stringstream name;
+		name << Name() << "_" << i;
+
+		auto data = GameGlue::CreateMaterialCreatedDirect(builder, (int)m, name.str().c_str(), material);
+		auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MaterialCreated, data.o);
+		builder.Finish(message);
+
+		common->GetGameGlueServer()->writeMessage(builder);
+	}
+
+	// Entity if static
+	if (IsStaticWorldModel())
+	{
+		SendEntityCreated((int)this);
+		SendEntityUpdated((int)this, idVec3(0, 0, 0), mat3_identity, this);
+	}
+
 }
 
 void idRenderModelStatic::GameGlueSendModelUpdate(const idRenderModel* impersonate)
@@ -2328,6 +2402,12 @@ void idRenderModelStatic::GameGlueSendModelUpdate(const idRenderModel* impersona
 	builder.Finish(message);
 
 	common->GetGameGlueServer()->writeMessage(builder);
+
+	// Entity if static
+	if (IsStaticWorldModel())
+	{
+		SendEntityUpdated((int)this, idVec3(0, 0, 0), mat3_identity, this);
+	}
 }
 
 void idRenderModelStatic::GameGlueSendModelDestroyed()
@@ -2344,6 +2424,12 @@ void idRenderModelStatic::GameGlueSendModelDestroyed()
 	builder.Finish(messageBuilder.Finish());
 
 	common->GetGameGlueServer()->writeMessage(builder);
+
+	// Entity if static
+	if (IsStaticWorldModel())
+	{
+		SendEntityDestroyed((int)this);
+	}
 }
 // GAMEGLUE_END
 
