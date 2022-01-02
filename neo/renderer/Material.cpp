@@ -26,10 +26,140 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+// GAMEGLUE_START
+#include "../GameGlueDoom3.h"
+// GAMEGLUE_END
+
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
 #include "tr_local.h"
+
+// GAMEGLUE_START
+flatbuffers::Offset<GameGlue::Material> PackageMaterial(flatbuffers::FlatBufferBuilder& builder, const idMaterial* m)
+{
+	std::vector<flatbuffers::Offset<GameGlue::MaterialParameter>> params;
+
+	const int numStages = m->GetNumStages();
+
+	// Needs to match memory layout in shader
+	struct StageParams
+	{
+		int32_t lighting;
+		int32_t blendMode;
+		int32_t vertexColor;
+		int32_t _padding;
+	};
+
+	std::vector<StageParams> stages(numStages);
+
+	for (int s = 0; s < numStages; s++)
+	{
+		const auto stage = m->GetStage(s);
+
+		// Texture param
+		{
+			char paramName[64];
+			std::sprintf(paramName, "_StageTexture_%i", s);
+			int textureHandle = (int)stage->texture.image;
+			auto paramData = builder.CreateStruct(GameGlue::TextureParameter(textureHandle));
+			params.push_back(GameGlue::CreateMaterialParameterDirect(builder, paramName, GameGlue::MaterialParameterData_TextureParameter, paramData.o));
+		}
+		// Add to constant buffer
+		{
+			stages[s].lighting = stage->lighting;
+			stages[s].blendMode = stage->drawStateBits;
+			stages[s].vertexColor = stage->vertexColor;
+		}
+	}
+
+	// Write param for constant buffer
+	if (stages.size() > 0)
+	{
+		auto buffer = builder.CreateVector((uint8_t*)&stages[0], sizeof(StageParams) * numStages);
+		auto paramData = GameGlue::CreateConstantBufferParameter(builder, buffer);
+		params.push_back(GameGlue::CreateMaterialParameterDirect(builder, "_stages", GameGlue::MaterialParameterData_ConstantBufferParameter, paramData.o));
+	}
+
+	// Write param for stage count
+	{
+		auto paramData = builder.CreateStruct(GameGlue::IntParameter(numStages));
+		params.push_back(GameGlue::CreateMaterialParameterDirect(builder, "_stageCount", GameGlue::MaterialParameterData_IntParameter, paramData.o));
+	}
+
+	GameGlue::MaterialSidedness sidedness;
+	switch (m->GetCullType())
+	{
+	case CT_FRONT_SIDED:
+	default:
+		sidedness = GameGlue::MaterialSidedness_Front;
+		break;
+	case CT_BACK_SIDED:
+		sidedness = GameGlue::MaterialSidedness_Back;
+		break;
+	case CT_TWO_SIDED:
+		sidedness = GameGlue::MaterialSidedness_Double;
+		break;
+	}
+
+	GameGlue::MaterialTransparency transparency;
+	switch (m->Coverage())
+	{
+	case MC_OPAQUE:
+	default:
+		transparency = GameGlue::MaterialTransparency_Opaque;
+		break;
+	case MC_PERFORATED:
+		transparency = GameGlue::MaterialTransparency_AlphaTest;
+		break;
+	case MC_TRANSLUCENT:
+		transparency = GameGlue::MaterialTransparency_AlphaBlend;
+		break;
+	}
+
+	// Always blend pre-multiplied, so we can emulate additive or lerp in the shader
+	GameGlue::MaterialBlendMode srcBlend = GameGlue::MaterialBlendMode_One;
+	GameGlue::MaterialBlendMode dstBlend = GameGlue::MaterialBlendMode_OneMinusSrcAlpha;
+
+	return GameGlue::CreateMaterialDirect(builder, sidedness, transparency, srcBlend, dstBlend, &params);
+}
+
+void SendMaterialCreated(idMaterial* m)
+{
+	flatbuffers::FlatBufferBuilder builder(2048);
+
+	auto material = PackageMaterial(builder, m);
+
+	auto data = GameGlue::CreateMaterialCreatedDirect(builder, (int)m, m->GetDescription(), material);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MaterialCreated, data.o);
+	builder.Finish(message);
+
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+
+void SendMaterialUpdated(idMaterial* m)
+{
+	flatbuffers::FlatBufferBuilder builder(2048);
+
+	auto material = PackageMaterial(builder, m);
+
+	auto data = GameGlue::CreateMaterialUpdated(builder, (int)m, material);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MaterialUpdated, data.o);
+	builder.Finish(message);
+
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+
+void SendMaterialDestroyed(idMaterial* m)
+{
+	flatbuffers::FlatBufferBuilder builder(32);
+	auto data = GameGlue::CreateMaterialDestroyed(builder, (int)m);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MaterialDestroyed, data.o);
+	builder.Finish(message);
+
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+// GAMEGLUE_END
 
 /*
 
@@ -132,6 +262,10 @@ idMaterial::idMaterial
 idMaterial::idMaterial() {
 	CommonInit();
 
+	// GAMEGLUE_START
+	SendMaterialCreated(this);
+	// GAMEGLUE_END
+
 	// we put this here instead of in CommonInit, because
 	// we don't want it cleared when a material is purged
 	surfaceArea = 0;
@@ -143,6 +277,9 @@ idMaterial::~idMaterial
 =============
 */
 idMaterial::~idMaterial() {
+	// GAMEGLUE_START
+	SendMaterialDestroyed(this);
+	// GAMEGLUE_END
 }
 
 /*
@@ -2317,6 +2454,10 @@ bool idMaterial::Parse( const char *text, const int textLength ) {
 		MakeDefault();
 		return false;
 	}
+	// GAMEGLUE_START
+	SendMaterialUpdated(this);
+	// GAMEGLUE_END
+
 	return true;
 }
 
