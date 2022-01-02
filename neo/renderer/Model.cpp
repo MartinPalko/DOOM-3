@@ -71,6 +71,9 @@ idRenderModelStatic::~idRenderModelStatic
 ================
 */
 idRenderModelStatic::~idRenderModelStatic() {
+	// GAMEGLUE_START
+	GameGlueSendModelDestroyed();
+	// GAMEGLUE_END
 	PurgeModel();
 }
 
@@ -2334,41 +2337,85 @@ void idRenderModelStatic::GameGlueSendModelCreated()
 
 		std::vector<flatbuffers::Offset<GameGlue::MaterialParameter>> params;
 		
+		const int numStages = m->GetNumStages();
 
-		for (int s = 0; s < m->GetNumStages(); s++)
+		// Needs to match memory layout in shader
+		struct StageParams
+		{
+			int32_t lighting;
+			int32_t blendMode;
+			int32_t vertexColor;
+			int32_t _padding;
+		};
+
+		StageParams* stages = new StageParams[numStages];
+
+		for (int s = 0; s < numStages; s++)
 		{
 			const auto stage = m->GetStage(s);
 
-			const char* paramName = nullptr;
-			
-			if (stage->lighting == SL_AMBIENT)
+			// Texture param
 			{
-				paramName = "_Emissive";
+				char paramName[64];
+				std::sprintf(paramName, "_StageTexture_%i", s);
+				int textureHandle = (int)stage->texture.image;
+				auto paramData = builder.CreateStruct(GameGlue::TextureParameter(textureHandle));
+				params.push_back(GameGlue::CreateMaterialParameterDirect(builder, paramName, GameGlue::MaterialParameterData_TextureParameter, paramData.o));
 			}
-			else if (stage->lighting == SL_BUMP)
+			// Add to constant buffer
 			{
-				paramName = "_NormalMap";
+				stages[s].lighting = stage->lighting;
+				stages[s].blendMode = stage->drawStateBits;
+				stages[s].vertexColor = stage->vertexColor;
 			}
-			else if (stage->lighting == SL_DIFFUSE)
-			{
-				paramName = "_MainTex";
-			}
-			else if (stage->lighting == SL_SPECULAR)
-			{
-				paramName = "_Specular";
-			}
-			else
-			{
-				continue;
-			}
-
-			int textureHandle = (int)stage->texture.image;
-			auto paramData = builder.CreateStruct(GameGlue::TextureParameter(textureHandle));
-
-			params.push_back(GameGlue::CreateMaterialParameterDirect(builder, paramName, GameGlue::MaterialParameterData_TextureParameter, paramData.o));
 		}
 
-		auto material = GameGlue::CreateMaterialDirect(builder, &params);
+		// Write param for constant buffer
+		{
+			auto buffer = builder.CreateVector((uint8_t*)stages, sizeof(StageParams) * numStages);
+			auto paramData = GameGlue::CreateConstantBufferParameter(builder, buffer);
+			params.push_back(GameGlue::CreateMaterialParameterDirect(builder, "_stages", GameGlue::MaterialParameterData_ConstantBufferParameter, paramData.o));
+		}
+
+		// Write param for stage count
+		{
+			auto paramData = builder.CreateStruct(GameGlue::IntParameter(numStages));
+			params.push_back(GameGlue::CreateMaterialParameterDirect(builder, "_stageCount", GameGlue::MaterialParameterData_IntParameter, paramData.o));
+		}
+
+		GameGlue::MaterialSidedness sidedness;
+		switch (m->GetCullType())
+		{
+		case CT_FRONT_SIDED:
+		default:
+			sidedness = GameGlue::MaterialSidedness_Front;
+			break;
+		case CT_BACK_SIDED:
+			sidedness = GameGlue::MaterialSidedness_Back;
+			break;
+		case CT_TWO_SIDED:
+			sidedness = GameGlue::MaterialSidedness_Double;
+			break;
+		}
+
+		GameGlue::MaterialTransparency transparency;
+		switch (m->Coverage())
+		{
+		case MC_OPAQUE:
+		default:
+			transparency = GameGlue::MaterialTransparency_Opaque;
+			break;
+		case MC_PERFORATED:
+			transparency = GameGlue::MaterialTransparency_AlphaTest;
+			break;
+		case MC_TRANSLUCENT:
+			transparency = GameGlue::MaterialTransparency_AlphaBlend;
+			break;
+		}
+
+		GameGlue::MaterialBlendMode srcBlend = GameGlue::MaterialBlendMode_SrcAlpha;
+		GameGlue::MaterialBlendMode dstBlend = GameGlue::MaterialBlendMode_OneMinusSrcAlpha;
+		auto material = GameGlue::CreateMaterialDirect(builder, sidedness, transparency, srcBlend, dstBlend, &params);
 
 		std::stringstream name;
 		name << Name() << "_" << i;
@@ -2378,6 +2425,7 @@ void idRenderModelStatic::GameGlueSendModelCreated()
 		builder.Finish(message);
 
 		common->GetGameGlueServer()->writeMessage(builder);
+		delete stages;
 	}
 
 	// Entity if static
@@ -2389,15 +2437,13 @@ void idRenderModelStatic::GameGlueSendModelCreated()
 
 }
 
-void idRenderModelStatic::GameGlueSendModelUpdate(const idRenderModel* impersonate)
+void idRenderModelStatic::GameGlueSendModelUpdate()
 {
 	flatbuffers::FlatBufferBuilder builder(2048);
 
-	const idRenderModel* modelHandle = (impersonate != nullptr) ? impersonate : this;
-
 	auto meshData = PackageMeshData(builder, this);
 
-	auto data = GameGlue::CreateMeshUpdated(builder, (int)modelHandle, meshData);
+	auto data = GameGlue::CreateMeshUpdated(builder, (int)this, meshData);
 	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MeshUpdated, data.o);
 	builder.Finish(message);
 

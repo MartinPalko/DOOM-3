@@ -312,7 +312,7 @@ public:
 
 	// GAMEGLUE_START
 	virtual void GameGlueSendModelCreated() = 0;
-	virtual void GameGlueSendModelUpdate(const idRenderModel* impersonate = nullptr) = 0;
+	virtual void GameGlueSendModelUpdate() = 0;
 	virtual void GameGlueSendModelDestroyed() = 0;
 	// GAMEGLUE_END
 };

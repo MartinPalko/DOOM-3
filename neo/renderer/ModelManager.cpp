@@ -427,10 +427,6 @@ void idRenderModelManagerLocal::RemoveModel( idRenderModel *model ) {
 	int index = models.FindIndex( model );
 	hash.RemoveIndex( hash.GenerateKey( model->Name(), false ), index );
 	models.RemoveIndex( index );
-
-	// GAMEGLUE_START
-	model->GameGlueSendModelDestroyed();
-	// GAMEGLUE_END
 }
 
 /*

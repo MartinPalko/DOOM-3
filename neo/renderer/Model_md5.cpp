@@ -26,6 +26,10 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+// GAMEGLUE_START
+#include "../GameGlueDoom3.h"
+// GAMEGLUE_END
+
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
@@ -719,80 +723,86 @@ void idRenderModelMD5::DrawJoints( const renderEntity_t *ent, const struct viewD
 idRenderModelMD5::InstantiateDynamicModel
 ====================
 */
-idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEntity_s *ent, const struct viewDef_s *view, idRenderModel *cachedModel ) {
+idRenderModel* idRenderModelMD5::InstantiateDynamicModel(const struct renderEntity_s* ent, const struct viewDef_s* view, idRenderModel* cachedModel) {
 	int					i, surfaceNum;
-	idMD5Mesh			*mesh;
-	idRenderModelStatic	*staticModel;
+	idMD5Mesh* mesh;
+	idRenderModelStatic* staticModel;
 
-	if ( cachedModel && !r_useCachedDynamicModels.GetBool() ) {
+	if (cachedModel && !r_useCachedDynamicModels.GetBool()) {
 		delete cachedModel;
 		cachedModel = NULL;
 	}
 
-	if ( purged ) {
-		common->DWarning( "model %s instantiated while purged", Name() );
+	if (purged) {
+		common->DWarning("model %s instantiated while purged", Name());
 		LoadModel();
 	}
 
-	if ( !ent->joints ) {
-		common->Printf( "idRenderModelMD5::InstantiateDynamicModel: NULL joints on renderEntity for '%s'\n", Name() );
+	if (!ent->joints) {
+		common->Printf("idRenderModelMD5::InstantiateDynamicModel: NULL joints on renderEntity for '%s'\n", Name());
 		delete cachedModel;
 		return NULL;
-	} else if ( ent->numJoints != joints.Num() ) {
-		common->Printf( "idRenderModelMD5::InstantiateDynamicModel: renderEntity has different number of joints than model for '%s'\n", Name() );
+	}
+	else if (ent->numJoints != joints.Num()) {
+		common->Printf("idRenderModelMD5::InstantiateDynamicModel: renderEntity has different number of joints than model for '%s'\n", Name());
 		delete cachedModel;
 		return NULL;
 	}
 
 	tr.pc.c_generateMd5++;
 
-	if ( cachedModel ) {
-		assert( dynamic_cast<idRenderModelStatic *>(cachedModel) != NULL );
-		assert( idStr::Icmp( cachedModel->Name(), MD5_SnapshotName ) == 0 );
-		staticModel = static_cast<idRenderModelStatic *>(cachedModel);
-	} else {
+	if (cachedModel) {
+		assert(dynamic_cast<idRenderModelStatic*>(cachedModel) != NULL);
+		assert(idStr::Icmp(cachedModel->Name(), MD5_SnapshotName) == 0);
+		staticModel = static_cast<idRenderModelStatic*>(cachedModel);
+	}
+	else {
 		staticModel = new idRenderModelStatic;
-		staticModel->InitEmpty( MD5_SnapshotName );
+		staticModel->InitEmpty(MD5_SnapshotName);
+		// GAMEGLUE_START
+		staticModel->GameGlueSendModelCreated();
+		// GAMEGLUE_END
 	}
 
 	staticModel->bounds.Clear();
 
-	if ( r_showSkel.GetInteger() ) {
-		if ( ( view != NULL ) && ( !r_skipSuppress.GetBool() || !ent->suppressSurfaceInViewID || ( ent->suppressSurfaceInViewID != view->renderView.viewID ) ) ) {
+	if (r_showSkel.GetInteger()) {
+		if ((view != NULL) && (!r_skipSuppress.GetBool() || !ent->suppressSurfaceInViewID || (ent->suppressSurfaceInViewID != view->renderView.viewID))) {
 			// only draw the skeleton
-			DrawJoints( ent, view );
+			DrawJoints(ent, view);
 		}
 
-		if ( r_showSkel.GetInteger() > 1 ) {
+		if (r_showSkel.GetInteger() > 1) {
 			// turn off the model when showing the skeleton
-			staticModel->InitEmpty( MD5_SnapshotName );
+			staticModel->InitEmpty(MD5_SnapshotName);
 			return staticModel;
 		}
 	}
 
 	// create all the surfaces
-	for( mesh = meshes.Ptr(), i = 0; i < meshes.Num(); i++, mesh++ ) {
+	for (mesh = meshes.Ptr(), i = 0; i < meshes.Num(); i++, mesh++) {
 		// avoid deforming the surface if it will be a nodraw due to a skin remapping
 		// FIXME: may have to still deform clipping hulls
-		const idMaterial *shader = mesh->shader;
-		
-		shader = R_RemapShaderBySkin( shader, ent->customSkin, ent->customShader );
-		
-		if ( !shader || ( !shader->IsDrawn() && !shader->SurfaceCastsShadow() ) ) {
-			staticModel->DeleteSurfaceWithId( i );
+		const idMaterial* shader = mesh->shader;
+
+		shader = R_RemapShaderBySkin(shader, ent->customSkin, ent->customShader);
+
+		if (!shader || (!shader->IsDrawn() && !shader->SurfaceCastsShadow())) {
+			staticModel->DeleteSurfaceWithId(i);
 			mesh->surfaceNum = -1;
 			continue;
 		}
 
-		modelSurface_t *surf;
+		modelSurface_t* surf;
 
-		if ( staticModel->FindSurfaceWithId( i, surfaceNum ) ) {
+		if (staticModel->FindSurfaceWithId(i, surfaceNum)) {
 			mesh->surfaceNum = surfaceNum;
 			surf = &staticModel->surfaces[surfaceNum];
-		} else {
+		}
+		else {
 
 			// Remove Overlays before adding new surfaces
-			idRenderModelOverlay::RemoveOverlaySurfacesFromModel( staticModel );
+			idRenderModelOverlay::RemoveOverlaySurfacesFromModel(staticModel);
 
 			mesh->surfaceNum = staticModel->NumSurfaces();
 			surf = &staticModel->surfaces.Alloc();
@@ -801,15 +811,18 @@ idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 			surf->id = i;
 		}
 
-		mesh->UpdateSurface( ent, ent->joints, surf );
+		mesh->UpdateSurface(ent, ent->joints, surf);
 
-		staticModel->bounds.AddPoint( surf->geometry->bounds[0] );
-		staticModel->bounds.AddPoint( surf->geometry->bounds[1] );
+		staticModel->bounds.AddPoint(surf->geometry->bounds[0]);
+		staticModel->bounds.AddPoint(surf->geometry->bounds[1]);
 	}
-	
+
 	// GAMEGLUE_START
 	if (staticModel)
-		staticModel->GameGlueSendModelUpdate(ent->hModel);
+	{
+		staticModel->GameGlueSendModelUpdate();
+		//SendEntityUpdated(ent->entityNum, ent->origin, ent->axis, staticModel);
+	}
 	// GAMEGLUE_END
 
 	return staticModel;
