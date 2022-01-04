@@ -63,6 +63,9 @@ idRenderModelStatic::idRenderModelStatic() {
 	reloadable = true;
 	levelLoadReferenced = false;
 	timeStamp = 0;
+	// GAMEGLUE_START
+	GameGlueSendModelCreated();
+	// GAMEGLUE_END
 }
 
 /*
@@ -319,6 +322,10 @@ void idRenderModelStatic::InitFromFile( const char *fileName ) {
 
 	// create the bounds for culling and dynamic surface creation
 	FinishSurfaces();
+
+	// GAMEGLUE_START
+	GameGlueSendModelUpdate();
+	// GAMEGLUE_END
 }
 
 /*
@@ -2304,6 +2311,7 @@ flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferB
 	}
 
 	return GameGlue::CreateMeshDataDirect(builder,
+		model->Name(),
 		&positions,
 		&uvs,
 		&normals,
@@ -2315,26 +2323,13 @@ flatbuffers::Offset<GameGlue::MeshData> PackageMeshData(flatbuffers::FlatBufferB
 
 void idRenderModelStatic::GameGlueSendModelCreated()
 {
-	// Model
-	{
-		flatbuffers::FlatBufferBuilder builder(2048);
+	flatbuffers::FlatBufferBuilder builder(2048);
 
-		auto meshData = PackageMeshData(builder, this);
+	auto data = GameGlue::CreateMeshCreated(builder, (int)this);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MeshCreated, data.o);
+	builder.Finish(message);
 
-		auto data = GameGlue::CreateMeshCreatedDirect(builder, (int)this, Name(), IsStaticWorldModel(), meshData);
-		auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MeshCreated, data.o);
-		builder.Finish(message);
-
-		common->GetGameGlueServer()->writeMessage(builder);
-	}
-
-	// Entity is static
-	if (IsStaticWorldModel())
-	{
-		SendEntityCreated((int)this);
-		SendEntityUpdated((int)this, idVec3(0, 0, 0), mat3_identity, this);
-	}
-
+	common->GetGameGlueServer()->writeMessage(builder);
 }
 
 void idRenderModelStatic::GameGlueSendModelUpdate()
@@ -2348,12 +2343,6 @@ void idRenderModelStatic::GameGlueSendModelUpdate()
 	builder.Finish(message);
 
 	common->GetGameGlueServer()->writeMessage(builder);
-
-	// Entity if static
-	if (IsStaticWorldModel())
-	{
-		SendEntityUpdated((int)this, idVec3(0, 0, 0), mat3_identity, this);
-	}
 }
 
 void idRenderModelStatic::GameGlueSendModelDestroyed()
@@ -2370,12 +2359,6 @@ void idRenderModelStatic::GameGlueSendModelDestroyed()
 	builder.Finish(messageBuilder.Finish());
 
 	common->GetGameGlueServer()->writeMessage(builder);
-
-	// Entity if static
-	if (IsStaticWorldModel())
-	{
-		SendEntityDestroyed((int)this);
-	}
 }
 // GAMEGLUE_END
 

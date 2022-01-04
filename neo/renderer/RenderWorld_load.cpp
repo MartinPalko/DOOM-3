@@ -180,6 +180,10 @@ idRenderModel *idRenderWorldLocal::ParseModel( idLexer *src ) {
 
 	model->FinishSurfaces();
 
+	// GAMEGLUE_START
+	model->GameGlueSendModelUpdate();
+	// GAMEGLUE_END
+
 	return model;
 }
 

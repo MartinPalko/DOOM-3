@@ -759,9 +759,6 @@ idRenderModel* idRenderModelMD5::InstantiateDynamicModel(const struct renderEnti
 	else {
 		staticModel = new idRenderModelStatic;
 		staticModel->InitEmpty(MD5_SnapshotName);
-		// GAMEGLUE_START
-		staticModel->GameGlueSendModelCreated();
-		// GAMEGLUE_END
 	}
 
 	staticModel->bounds.Clear();
@@ -821,7 +818,6 @@ idRenderModel* idRenderModelMD5::InstantiateDynamicModel(const struct renderEnti
 	if (staticModel)
 	{
 		staticModel->GameGlueSendModelUpdate();
-		//SendEntityUpdated(ent->entityNum, ent->origin, ent->axis, staticModel);
 	}
 	// GAMEGLUE_END
 

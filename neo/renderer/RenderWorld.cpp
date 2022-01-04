@@ -192,7 +192,7 @@ qhandle_t idRenderWorldLocal::AddEntityDef( const renderEntity_t *re ){
 	}
 
 	// GAMEGLUE_START
-	SendEntityCreated(re->entityNum);
+	SendEntityCreated(entityHandle);
 	// GAMEGLUE_END
 
 	UpdateEntityDef( entityHandle, re );
@@ -296,9 +296,8 @@ void idRenderWorldLocal::UpdateEntityDef( qhandle_t entityHandle, const renderEn
 	R_CreateEntityRefs( def );
 
 	// GAMEGLUE_START
-	// TODO: This gets set as well as the MD5 model update, which results in flickering... can we get the dynamic model here?
 	idRenderModel* model = def->cachedDynamicModel ? def->cachedDynamicModel : def->parms.hModel;
-	SendEntityUpdated(def->parms.entityNum, def->parms.origin, def->parms.axis, model);
+	SendEntityUpdated(def->index, def->parms.origin, def->parms.axis, model);
 	// GAMEGLUE_END
 }
 
@@ -327,7 +326,7 @@ void idRenderWorldLocal::FreeEntityDef( qhandle_t entityHandle ) {
 	R_FreeEntityDefDerivedData( def, false, false );
 
 	// GAMEGLUE_START
-	SendEntityDestroyed(def->parms.entityNum);
+	SendEntityDestroyed(def->index);
 	// GAMEGLUE_END
 
 	if ( session->writeDemo && def->archived ) {

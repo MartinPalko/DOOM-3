@@ -26,6 +26,10 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+// GAMEGLUE_START
+#include "../GameGlueDoom3.h"
+// GAMEGLUE_END
+
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
@@ -344,6 +348,7 @@ idRenderModelManagerLocal::AllocModel
 =================
 */
 idRenderModel *idRenderModelManagerLocal::AllocModel() {
+
 	return new idRenderModelStatic();
 }
 
@@ -412,9 +417,12 @@ idRenderModelManagerLocal::AddModel
 */
 void idRenderModelManagerLocal::AddModel( idRenderModel *model ) {
 	hash.Add( hash.GenerateKey( model->Name(), false ), models.Append( model ) );
-
 	// GAMEGLUE_START
-	model->GameGlueSendModelCreated();
+	if (model->IsStaticWorldModel())
+	{
+		SendEntityCreated((int)model);
+		SendEntityUpdated((int)model, idVec3(0, 0, 0), mat3_identity, model);
+	}
 	// GAMEGLUE_END
 }
 
@@ -427,6 +435,12 @@ void idRenderModelManagerLocal::RemoveModel( idRenderModel *model ) {
 	int index = models.FindIndex( model );
 	hash.RemoveIndex( hash.GenerateKey( model->Name(), false ), index );
 	models.RemoveIndex( index );
+	// GAMEGLUE_START
+	if (model->IsStaticWorldModel())
+	{
+		SendEntityDestroyed((int)model);
+	}
+	// GAMEGLUE_END
 }
 
 /*

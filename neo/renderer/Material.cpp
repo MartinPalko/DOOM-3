@@ -121,16 +121,14 @@ flatbuffers::Offset<GameGlue::Material> PackageMaterial(flatbuffers::FlatBufferB
 	GameGlue::MaterialBlendMode srcBlend = GameGlue::MaterialBlendMode_One;
 	GameGlue::MaterialBlendMode dstBlend = GameGlue::MaterialBlendMode_OneMinusSrcAlpha;
 
-	return GameGlue::CreateMaterialDirect(builder, sidedness, transparency, srcBlend, dstBlend, &params);
+	return GameGlue::CreateMaterialDirect(builder, m->GetFileName(), sidedness, transparency, srcBlend, dstBlend, &params);
 }
 
 void SendMaterialCreated(idMaterial* m)
 {
 	flatbuffers::FlatBufferBuilder builder(2048);
 
-	auto material = PackageMaterial(builder, m);
-
-	auto data = GameGlue::CreateMaterialCreatedDirect(builder, (int)m, m->GetDescription(), material);
+	auto data = GameGlue::CreateMaterialCreated(builder, (int)m);
 	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MaterialCreated, data.o);
 	builder.Finish(message);
 
