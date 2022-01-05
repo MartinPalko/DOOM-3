@@ -36,11 +36,22 @@ If you have questions concerning this license or the applicable additional terms
 #include "tr_local.h"
 
 // GAMEGLUE_START
-flatbuffers::Offset<GameGlue::Material> PackageMaterial(flatbuffers::FlatBufferBuilder& builder, const idMaterial* m)
+void SendMaterialCreated(idMaterial* m)
 {
-	std::vector<flatbuffers::Offset<GameGlue::MaterialParameter>> params;
+	flatbuffers::FlatBufferBuilder builder(2048);
 
-	const int numStages = m->GetNumStages();
+	auto data = GameGlue::CreateMaterialCreated(builder, (int)m);
+	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MaterialCreated, data.o);
+	builder.Finish(message);
+
+	common->GetGameGlueServer()->writeMessage(builder);
+}
+
+void idMaterial::GameGlueSendMaterialUpdated(const float* regs) const
+{
+	flatbuffers::FlatBufferBuilder builder(2048);
+
+	std::vector<flatbuffers::Offset<GameGlue::MaterialParameter>> params;
 
 	// Needs to match memory layout in shader
 	struct StageParams
@@ -48,47 +59,99 @@ flatbuffers::Offset<GameGlue::Material> PackageMaterial(flatbuffers::FlatBufferB
 		int32_t lighting;
 		int32_t blendMode;
 		int32_t vertexColor;
-		int32_t _padding;
+		float alphaClip;
+
+		float colorModR;
+		float colorModG;
+		float colorModB;
+		float colorModA;
+
+		float matrix[2][3];
+		float padding[2];
 	};
 
-	std::vector<StageParams> stages(numStages);
+	std::vector<StageParams> stages = std::vector<StageParams>(0);
+	stages.reserve(numStages);
 
 	for (int s = 0; s < numStages; s++)
 	{
-		const auto stage = m->GetStage(s);
+		const auto stage = GetStage(s);
+
+		if (regs != nullptr && regs[stage->conditionRegister] == 0)
+			continue; // Inactive stage
 
 		// Texture param
 		{
 			char paramName[64];
-			std::sprintf(paramName, "_StageTexture_%i", s);
+			std::sprintf(paramName, "_StageTexture_%i", stages.size());
 			int textureHandle = (int)stage->texture.image;
 			auto paramData = builder.CreateStruct(GameGlue::TextureParameter(textureHandle));
 			params.push_back(GameGlue::CreateMaterialParameterDirect(builder, paramName, GameGlue::MaterialParameterData_TextureParameter, paramData.o));
 		}
 		// Add to constant buffer
 		{
-			stages[s].lighting = stage->lighting;
-			stages[s].blendMode = stage->drawStateBits;
-			stages[s].vertexColor = stage->vertexColor;
+			StageParams stageParams;
+			stageParams.lighting = stage->lighting;
+			stageParams.blendMode = stage->drawStateBits;
+			stageParams.vertexColor = stage->vertexColor;
+
+			if (regs != nullptr)
+			{
+				stageParams.alphaClip = stage->hasAlphaTest ? regs[stage->alphaTestRegister] : -1.0f;
+				stageParams.colorModR = regs[stage->color.registers[0]];
+				stageParams.colorModG = regs[stage->color.registers[1]];
+				stageParams.colorModB = regs[stage->color.registers[2]];
+				stageParams.colorModA = regs[stage->color.registers[3]];
+			}
+			else
+			{
+				stageParams.alphaClip = 0.5f;
+				stageParams.colorModR = 1.0f;
+				stageParams.colorModG = 1.0f;
+				stageParams.colorModB = 1.0f;
+				stageParams.colorModA = 1.0f;
+			}
+
+			if (regs != nullptr && stage->texture.hasMatrix)
+			{
+				const textureStage_t& t = stage->texture;
+				stageParams.matrix[0][0] = regs[t.matrix[0][0]];
+				stageParams.matrix[0][1] = regs[t.matrix[0][1]];
+				stageParams.matrix[0][2] = regs[t.matrix[0][2]];
+				stageParams.matrix[1][0] = regs[t.matrix[1][0]];
+				stageParams.matrix[1][1] = regs[t.matrix[1][1]];
+				stageParams.matrix[1][2] = regs[t.matrix[1][2]];
+			}
+			else
+			{
+				stageParams.matrix[0][0] = 1;
+				stageParams.matrix[0][1] = 0;
+				stageParams.matrix[0][2] = 0;
+				stageParams.matrix[1][0] = 0;
+				stageParams.matrix[1][1] = 1;
+				stageParams.matrix[1][2] = 0;
+			}
+
+			stages.push_back(stageParams);
 		}
 	}
 
 	// Write param for constant buffer
 	if (stages.size() > 0)
 	{
-		auto buffer = builder.CreateVector((uint8_t*)&stages[0], sizeof(StageParams) * numStages);
+		auto buffer = builder.CreateVector((uint8_t*)&stages[0], sizeof(StageParams) * stages.size());
 		auto paramData = GameGlue::CreateConstantBufferParameter(builder, buffer);
 		params.push_back(GameGlue::CreateMaterialParameterDirect(builder, "_stages", GameGlue::MaterialParameterData_ConstantBufferParameter, paramData.o));
 	}
 
 	// Write param for stage count
 	{
-		auto paramData = builder.CreateStruct(GameGlue::IntParameter(numStages));
+		auto paramData = builder.CreateStruct(GameGlue::IntParameter(stages.size()));
 		params.push_back(GameGlue::CreateMaterialParameterDirect(builder, "_stageCount", GameGlue::MaterialParameterData_IntParameter, paramData.o));
 	}
 
 	GameGlue::MaterialSidedness sidedness;
-	switch (m->GetCullType())
+	switch (GetCullType())
 	{
 	case CT_FRONT_SIDED:
 	default:
@@ -103,7 +166,7 @@ flatbuffers::Offset<GameGlue::Material> PackageMaterial(flatbuffers::FlatBufferB
 	}
 
 	GameGlue::MaterialTransparency transparency;
-	switch (m->Coverage())
+	switch (Coverage())
 	{
 	case MC_OPAQUE:
 	default:
@@ -121,27 +184,9 @@ flatbuffers::Offset<GameGlue::Material> PackageMaterial(flatbuffers::FlatBufferB
 	GameGlue::MaterialBlendMode srcBlend = GameGlue::MaterialBlendMode_One;
 	GameGlue::MaterialBlendMode dstBlend = GameGlue::MaterialBlendMode_OneMinusSrcAlpha;
 
-	return GameGlue::CreateMaterialDirect(builder, m->GetFileName(), sidedness, transparency, srcBlend, dstBlend, &params);
-}
+	auto material = GameGlue::CreateMaterialDirect(builder, GetFileName(), sidedness, transparency, srcBlend, dstBlend, &params);
 
-void SendMaterialCreated(idMaterial* m)
-{
-	flatbuffers::FlatBufferBuilder builder(2048);
-
-	auto data = GameGlue::CreateMaterialCreated(builder, (int)m);
-	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MaterialCreated, data.o);
-	builder.Finish(message);
-
-	common->GetGameGlueServer()->writeMessage(builder);
-}
-
-void SendMaterialUpdated(idMaterial* m)
-{
-	flatbuffers::FlatBufferBuilder builder(2048);
-
-	auto material = PackageMaterial(builder, m);
-
-	auto data = GameGlue::CreateMaterialUpdated(builder, (int)m, material);
+	auto data = GameGlue::CreateMaterialUpdated(builder, (int)this, material);
 	auto message = GameGlue::CreateServerMessage(builder, GameGlue::ServerMessageData_MaterialUpdated, data.o);
 	builder.Finish(message);
 
@@ -2453,7 +2498,7 @@ bool idMaterial::Parse( const char *text, const int textLength ) {
 		return false;
 	}
 	// GAMEGLUE_START
-	SendMaterialUpdated(this);
+	GameGlueSendMaterialUpdated(nullptr);
 	// GAMEGLUE_END
 
 	return true;

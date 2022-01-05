@@ -1318,6 +1318,10 @@ void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const 
 		tr.viewDef->renderView.time = oldTime;
 	}
 
+	// GAMEGLUE_START
+	shader->GameGlueSendMaterialUpdated(drawSurf->shaderRegisters);
+	// GAMEGLUE_END
+
 	// we can't add subviews at this point, because that would
 	// increment tr.viewCount, messing up the rest of the surface
 	// adds for this view

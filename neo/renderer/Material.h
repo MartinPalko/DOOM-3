@@ -587,6 +587,10 @@ public:
 	bool				IsPortalSky() const						{ return portalSky; };
 	void				AddReference();
 
+	// GAMEGLUE_START
+	void				GameGlueSendMaterialUpdated(const float* regs) const;
+	// GAMEGLUE_END
+
 private:
 	// parse the entire material
 	void				CommonInit();
